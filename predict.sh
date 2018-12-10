@@ -1,0 +1,1 @@
+python3 predict.py --mode test --gpu 0 --image /home/liu/Desktop/KITTI/data_object_image_2/training/image_2/ --box2d /home/liu/Desktop/KITTI/training/label_2/ --model model/model-50 --output /home/liu/Desktop/KITTI/training/label_3/
