@@ -197,7 +197,7 @@ def test(model, image_dir, box2d_loc, box3d_loc):
     dim_stats = read_stats("label_stats.txt")
     ### buile graph
     # dimension, orientation, confidence, loss, optimizer, loss_d, loss_o, loss_c = build_model()
-    dimension, orientation, _, confidence = VGG_3D(inputs, training=True)
+    dimension, orientation, _, confidence = VGG_3D(inputs, training=False)
 
     ### GPU config 
     tfconfig = tf.ConfigProto(allow_soft_placement=True)
@@ -217,7 +217,7 @@ def test(model, image_dir, box2d_loc, box3d_loc):
         os.mkdir(box3d_loc)
 
     # Load image & run testing
-    all_image = sorted(os.listdir(image_dir))
+    all_image = sorted(os.listdir(image_dir))[7000:]
 
     for f in all_image:
         image_file = image_dir + f
@@ -242,7 +242,8 @@ def test(model, image_dir, box2d_loc, box3d_loc):
                 patch = img[obj['ymin']:obj['ymax'],obj['xmin']:obj['xmax']]
                 # patch = cv2.resize(patch, (NORM_H, NORM_W))
                 patch = cv2.resize(patch, (INPUT_SIZE, INPUT_SIZE))
-                patch = patch - np.array([[[103.939, 116.779, 123.68]]])
+                # patch = cv2.cvtColor(patch, cv2.COLOR_BGR2RGB).astype(np.float32)
+                # patch = patch - np.array([[[103.939, 116.779, 123.68]]])
                 patch = np.expand_dims(patch, 0)
                 prediction = sess.run([dimension, orientation, confidence], feed_dict={inputs: patch})
                 # Transform regressed angle

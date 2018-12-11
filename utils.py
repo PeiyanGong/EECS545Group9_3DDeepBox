@@ -32,23 +32,25 @@ def prepare_data(labels, indices, batch_size, dim_stats):
 		dim_stat = dim_stats[c_idx]
 		# read image
 		img = cv2.imread(label[0])
-
+		# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32)
+		# img = img - np.array([[[103.939, 116.779, 123.68]]])
+		
 		# read label
 		d_train[i, :] = np.array(list(map(float, label[2:5]))) - dim_stat
 		angle = float(label[5])
 
-		# flip = np.random.rand(1)
-		# if flip[0] < 0.5: # DO NOT flip
-		anchors = compute_anchors(angle)
-		for anchor in anchors:
-			o_train[i, anchor[0]] = np.array([np.cos(anchor[1]), np.sin(anchor[1])])
-			b_train[i, anchor[0]] = 1.
-		# else:
-		# 	anchors = compute_anchors(2*np.pi - angle)
-		# 	img = cv2.flip(img, 1)
-		# 	for anchor in anchors:
-		# 		o_train[i, anchor[0]] = np.array([np.cos(anchor[1]), np.sin(anchor[1])])
-		# 		b_train[i, anchor[0]] = 1.
+		flip = np.random.rand(1)
+		if flip < 0.5: # DO NOT flip
+			anchors = compute_anchors(angle)
+			for anchor in anchors:
+				o_train[i, anchor[0], :] = np.array([np.cos(anchor[1]), np.sin(anchor[1])])
+				b_train[i, anchor[0]] = 1.
+		else:
+			anchors = compute_anchors(2.*np.pi - angle)
+			img = cv2.flip(img, 1)
+			for anchor in anchors:
+				o_train[i, anchor[0]] = np.array([np.cos(anchor[1]), np.sin(anchor[1])])
+				b_train[i, anchor[0]] = 1.
 
 		x_train.append(img)
 		b_train[i, :] = b_train[i, :] / np.sum(b_train[i, :])
@@ -68,13 +70,13 @@ def read_stats(stats_file):
 
 	return dim_stats
 
-if __name__ == "__main__":
-	dim_stats = read_stats("label_stats.txt")
+# if __name__ == "__main__":
+# 	dim_stats = read_stats("label_stats.txt")
 
-	f = open("label_crop.txt")
-	label = f.readlines()
-	indices = range(16)
-	x_train, d_train, o_train, b_train = prepare_data(label, indices, 16, dim_stats)
+# 	f = open("label_crop.txt")
+# 	label = f.readlines()
+# 	indices = range(16)
+# 	x_train, d_train, o_train, b_train = prepare_data(label, indices, 16, dim_stats)
 
-	print(x_train.shape, d_train.shape, o_train.shape, b_train.shape)
+# 	print(x_train.shape, d_train.shape, o_train.shape, b_train.shape)
 	

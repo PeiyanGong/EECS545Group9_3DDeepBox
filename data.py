@@ -45,7 +45,7 @@ def parse_annotation(image_process=False):
 				
 				if (image_process):
 					img = cv2.imread(image_file)
-					img_new = img[ymin:ymax, xmin:xmax]
+					img_new = img[ymin:ymax+1, xmin:xmax+1]
 					img_new = cv2.resize(img_new, (INPUT_SIZE, INPUT_SIZE))
 					cv2.imwrite(image_crop, img_new)
 				
@@ -64,4 +64,4 @@ def parse_annotation(image_process=False):
 	label_crop.close()
 
 if __name__ == "__main__":
-	parse_annotation(image_process=False)
+	parse_annotation(image_process=True)

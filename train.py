@@ -23,45 +23,51 @@ f = open("label_crop.txt")
 label = f.readlines()
 num_data = len(label)
 train_num = int(np.floor(num_data/BATCH_SIZE))
-	
+
+# x_train, d_train, o_train, b_train = prepare_data(label, range(8), BATCH_SIZE, dim_stats)
+# for i in range(train_img.shape[0]):
+#     cv2.imwrite("gt_test_2/" + str(i) + ".png", x_train[i,:])
+# print(d_train, o_train, b_train)
+
 ### buile graph
 dimension, orientation, bin, _ = VGG_3D(img_in)
-loss, loss_d, loss_o, loss_b = custom_loss(d_label, o_label, b_label, dimension, orientation, bin)
+loss = custom_loss(d_label, o_label, b_label, dimension, orientation, bin)
 
 # define optimizer
 opt_operation = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
 # opt_operation = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
 sess = tf.Session()
-saver = tf.train.Saver()
-sess.run(tf.global_variables_initializer())
-
 # Use pretrain VGG
-# variables_to_restore = slim.get_variables()[:26] ## vgg16-conv5
-# saver = tf.train.Saver(max_to_keep=100)
+variables_to_restore = tf.contrib.slim.get_variables()[:26]
+saver = tf.train.Saver()
+
+ckpt_list = tf.contrib.framework.list_variables('./vgg_16.ckpt')[1:-7]
+new_ckpt_list = []
+for name in range(1,len(ckpt_list),2):
+	tf.contrib.framework.init_from_checkpoint('./vgg_16.ckpt', {ckpt_list[name-1][0]: variables_to_restore[name]})
+	tf.contrib.framework.init_from_checkpoint('./vgg_16.ckpt', {ckpt_list[name][0]: variables_to_restore[name-1]})
+sess.run(tf.global_variables_initializer())
 
 # Start to train model
 for epoch in range(epochs):
 	epoch_loss = np.zeros((train_num,1))
 	tStart_epoch = time.time()
 	batch_loss = 0
-	loss_d_, loss_o_, loss_b_ = 0, 0, 0
 	random_idx = np.random.permutation(num_data)
 
 	tqdm_iterator = tqdm(range(train_num), ascii=True)
 	for num_iters in tqdm_iterator:
-		# tqdm_iterator.set_description('Epoch ' + str(epoch+1) + ' : Loss:' + str(batch_loss) + \
-		# 	"\nDim Loss : " + str(loss_d_) + " Ori Loss : " + str(loss_o_) + " Bin Loss : " + str(loss_b_))
 		tqdm_iterator.set_description('Epoch ' + str(epoch+1) + ' : Loss:' + str(batch_loss))
 		curr_idx = random_idx[num_iters*BATCH_SIZE : (num_iters+1)*BATCH_SIZE]
 		x_train, d_train, o_train, b_train = prepare_data(label, curr_idx, BATCH_SIZE, dim_stats)
-		_, batch_loss, loss_d_, loss_o_, loss_b_ = sess.run([opt_operation, loss, loss_d, loss_o, loss_b], feed_dict={img_in: x_train, d_label: d_train, o_label: o_train, b_label: b_train})
+		_, batch_loss = sess.run([opt_operation, loss], feed_dict={img_in: x_train, d_label: d_train, o_label: o_train, b_label: b_train})
 
 		epoch_loss[num_iters] = batch_loss 
 
 	# save model
 	if (epoch+1) % 2 == 0:
-		saver.save(sess,save_path+"augment_model", global_step = epoch+1)
+		saver.save(sess,save_path+"augment", global_step = epoch+1)
 
 	# Print some information
 	print ("Epoch:", epoch+1, " done. Loss:", np.mean(epoch_loss))
