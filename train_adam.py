@@ -34,7 +34,7 @@ dimension, orientation, bin, _ = VGG_3D(img_in)
 loss = custom_loss(d_label, o_label, b_label, dimension, orientation, bin)
 
 # define optimizer
-opt_operation = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(loss)
+opt_operation = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 # opt_operation = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
 sess = tf.Session()

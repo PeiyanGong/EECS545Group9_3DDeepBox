@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
+import config
 
-file_index = "000110"
+file_index = "007469"
 font = cv2.FONT_HERSHEY_SIMPLEX
 pad_size = 0
 
@@ -52,14 +53,14 @@ def project3Dto2DDraw(xyz, hwl, theta, img, intrinsic, color, thickness=1):
         p = np.int_(p)
         points_2D.append(p)
     pt2Darr = np.array(points_2D)
-    print(np.max(pt2Darr[:,0]) - np.min(pt2Darr[:,0]), np.max(pt2Darr[:,1]) - np.min(pt2Darr[:,1]))
+    # print(np.max(pt2Darr[:,0]) - np.min(pt2Darr[:,0]), np.max(pt2Darr[:,1]) - np.min(pt2Darr[:,1]))
     for order in line_order:
         img = drawLine(img, order[0], order[1], points_2D, color, thickness)
 
     return img
 
 line_order = [[0, 1], [2, 3], [4, 5], [6, 7], [0, 2], [2, 6], [4, 6], [0, 4], [1, 3], [7, 3], [7, 5], [5, 1]]
-image_file = "data_object_image_2/training/image_2/" + file_index + ".png"
+image_file = '/home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/image_2/' + file_index + ".png"
 # image_file = "data_object_image_2/testing/image_2/" + file_index + ".png"
 img = cv2.imread(image_file)
 intrinsic = np.zeros((3, 4))
@@ -67,7 +68,7 @@ h = img.shape[0]
 w = img.shape[1]
 
 # get calibration parameters
-calib_file = 'data_object_calib/training/calib/' + file_index + '.txt'
+calib_file = '/home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/calib/' + file_index + '.txt'
 # calib_file = 'data_object_calib/testing/calib/' + file_index + '.txt'
 with open(calib_file) as f:
     data = f.readlines()
@@ -82,12 +83,14 @@ f_u = intrinsic[0,0]
 f_v = intrinsic[1,1]
 b_x = intrinsic[0,3]/(-f_u)
 b_y = intrinsic[1,3]/(-f_v)
-print (c_u, c_v, b_x, b_y)
-print(intrinsic)
+# print (c_u, c_v, b_x, b_y)
+# print(intrinsic)
 
 # get ground truth
-label_file = 'training/label_3/' + file_index + '.txt'
-# label_file = '/home/liu/Desktop/YOLOv3-tensorflow/kitti_output/' + file_index + '.txt'
+# label_file = '/home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/label_2/' + file_index + '.txt'
+# label_file = '/home/vincegong/Documents/Course/EECS545/Project/3D-DeepBox-for-EECS545/output_orign/' + file_index + '.txt'
+# label_file = '/home/vincegong/Documents/Course/EECS545/Project/3D-DeepBox-for-EECS545/output_adam/' + file_index + '.txt'
+label_file = '/home/vincegong/Documents/Course/EECS545/Project/3D-DeepBox-for-EECS545/output_final/' + file_index + '.txt'
 with open(label_file) as f:
     bbox2Ds = []
     bbox3Ds = []

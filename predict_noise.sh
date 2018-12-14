@@ -1,0 +1,1 @@
+python predict_noise.py --mode test --gpu 0 --image /home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/image_2/ --box2d /home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/label_2/ --model model_augment/augment-50 --output /home/vincegong/Documents/Course/EECS545/Project/3D-DeepBox-for-EECS545/output_augmentwithnoise/ --noise 10

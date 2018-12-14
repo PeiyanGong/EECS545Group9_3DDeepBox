@@ -38,6 +38,10 @@ def parse_annotation(image_process=False):
 				ymin = int(float(line[5]))
 				xmax = int(float(line[6]))
 				ymax = int(float(line[7]))
+				# xmin = int(float(line[4]))
+				# ymin = int(float(line[5]))
+				# xmax = int(float(line[6]))
+				# ymax = int(float(line[7]))
 
 				info = image_crop + " " + line[0] + " " \
 						+ line[8] + " " + line[9] + " " + line[10] + " " + str(new_alpha) + "\n"

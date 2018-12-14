@@ -12,17 +12,11 @@ from utils import read_stats, prepare_data
 from network import *
 
 #####
-#Training setting
 
-BIN, OVERLAP = 2, 0.1
-W = 1.
-ALPHA = 1.
-MAX_JIT = 3
+
 NORM_H, NORM_W = 224, 224
 VEHICLES = ['Car', 'Truck', 'Van', 'Tram','Pedestrian','Cyclist']
-BATCH_SIZE = 16
-learning_rate = 0.0002
-epochs = 50
+
 save_path = './model/'
 
 dims_avg = {'Cyclist': np.array([ 1.73532436,  0.58028152,  1.77413709]), 'Van': np.array([ 2.18928571,  1.90979592,  5.07087755]), 'Tram': np.array([  3.56092896,   2.39601093,  18.34125683]), 'Car': np.array([ 1.52159147,  1.64443089,  3.85813679]), 'Pedestrian': np.array([ 1.75554637,  0.66860882,  0.87623049]), 'Truck': np.array([  3.07392252,   2.63079903,  11.2190799 ])}
@@ -49,154 +43,9 @@ def parse_args():
 
     return args
 
-
-def build_model():
-
-  #### build some layer 
-  def LeakyReLU(x, alpha):
-      return tf.nn.relu(x) - alpha * tf.nn.relu(-x)
-
-  def orientation_loss(y_true, y_pred):
-      # Find number of anchors
-      anchors = tf.reduce_sum(tf.square(y_true), axis=2)
-      anchors = tf.greater(anchors, tf.constant(0.5))
-      anchors = tf.reduce_sum(tf.cast(anchors, tf.float32), 1)
-
-      # Define the loss
-      loss = (y_true[:,:,0]*y_pred[:,:,0] + y_true[:,:,1]*y_pred[:,:,1])
-      loss = tf.reduce_sum((2 - 2 * tf.reduce_mean(loss,axis=0))) / anchors
-
-      return tf.reduce_mean(loss)
-
-  #####
-  #Build Graph
-  with slim.arg_scope([slim.conv2d, slim.fully_connected],
-                      activation_fn=tf.nn.relu,
-                      weights_initializer=tf.truncated_normal_initializer(0.0, 0.01),
-                      weights_regularizer=slim.l2_regularizer(0.0005)):
-    net = slim.repeat(inputs, 2, slim.conv2d, 64, [3, 3], scope='conv1')
-    net = slim.max_pool2d(net, [2, 2], scope='pool1')
-    net = slim.repeat(net, 2, slim.conv2d, 128, [3, 3], scope='conv2')
-    net = slim.max_pool2d(net, [2, 2], scope='pool2')
-    net = slim.repeat(net, 3, slim.conv2d, 256, [3, 3], scope='conv3')
-    net = slim.max_pool2d(net, [2, 2], scope='pool3')
-    net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv4')
-    net = slim.max_pool2d(net, [2, 2], scope='pool4')
-    net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5')
-    net = slim.max_pool2d(net, [2, 2], scope='pool5')
-    conv5 = tf.contrib.layers.flatten(net)
-
-    #dimension = slim.fully_connected(conv5, 512, scope='fc7_d')
-    dimension = slim.fully_connected(conv5, 512, activation_fn=None, scope='fc7_d')
-    dimension = LeakyReLU(dimension, 0.1)
-    dimension = slim.dropout(dimension, 0.5, scope='dropout7_d')
-    #dimension = slim.fully_connected(dimension, 3, scope='fc8_d')
-    dimension = slim.fully_connected(dimension, 3, activation_fn=None, scope='fc8_d')
-    #dimension = LeakyReLU(dimension, 0.1)
-
-    #loss_d = tf.reduce_mean(tf.square(d_label - dimension))
-    loss_d = tf.losses.mean_squared_error(d_label, dimension)
-
-    #orientation = slim.fully_connected(conv5, 256, scope='fc7_o')
-    orientation = slim.fully_connected(conv5, 256, activation_fn=None, scope='fc7_o')
-    orientation = LeakyReLU(orientation, 0.1)
-    orientation = slim.dropout(orientation, 0.5, scope='dropout7_o')
-    #orientation = slim.fully_connected(orientation, BIN*2, scope='fc8_o')
-    orientation = slim.fully_connected(orientation, BIN*2, activation_fn=None, scope='fc8_o')
-    #orientation = LeakyReLU(orientation, 0.1)
-    orientation = tf.reshape(orientation, [-1, BIN, 2])
-    orientation = tf.nn.l2_normalize(orientation, dim=2)
-    loss_o = orientation_loss(o_label, orientation)
-
-    #confidence = slim.fully_connected(conv5, 256, scope='fc7_c')
-    confidence = slim.fully_connected(conv5, 256, activation_fn=None, scope='fc7_c')
-    confidence = LeakyReLU(confidence, 0.1)
-    confidence = slim.dropout(confidence, 0.5, scope='dropout7_c')
-    confidence = slim.fully_connected(confidence, BIN, activation_fn=None, scope='fc8_c')
-    loss_c = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=c_label, logits= confidence))
-   
-    confidence = tf.nn.softmax(confidence)
-    #loss_c = tf.reduce_mean(tf.square(c_label - confidence))
-    #loss_c = tf.losses.mean_squared_error(c_label, confidence)
-    
-    total_loss = 4. * loss_d + 8. * loss_o + loss_c
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(total_loss)
-    # optimizer = tf.train.AdamOptimizer(learning_rate).minimize(total_loss)
-
-    return dimension, orientation, confidence, total_loss, optimizer, loss_d, loss_o, loss_c
-
-
-def train(image_dir, box2d_loc, label_dir):
-    dim_stats = read_stats("label_stats.txt")
-    f = open("label_crop.txt")
-    label = f.readlines()
-    num_data = len(label)
-    # load data & gen data
-    # all_objs = parse_annotation(label_dir, image_dir)
-    # all_exams  = len(all_objs)
-    # np.random.shuffle(all_objs)
-    # train_gen = data_gen(image_dir, all_objs, BATCH_SIZE)
-    # train_img, train_label = next(train_gen)
-    # print(train_label[0].shape, train_label[1].shape, train_label[2].shape)
-    train_num = int(np.floor(num_data/BATCH_SIZE))
-    
-    ### buile graph
-    dimension, orientation, confidence, loss, optimizer, loss_d, loss_o, loss_c = build_model()
-
-    ### GPU config
-    tfconfig = tf.ConfigProto(allow_soft_placement=True)
-    tfconfig.gpu_options.allow_growth = True
-    sess = tf.Session(config=tfconfig)
-
-    # create a folder for saving model
-    if os.path.isdir(save_path) == False:
-        os.mkdir(save_path)
-    variables_to_restore = slim.get_variables()[:26] ## vgg16-conv5
-
-    saver = tf.train.Saver(max_to_keep=100)
-
-    #Load pretrain VGG model
-    ckpt_list = tf.contrib.framework.list_variables('./vgg_16.ckpt')[1:-7]
-    new_ckpt_list = []
-    for name in range(1,len(ckpt_list),2):
-        tf.contrib.framework.init_from_checkpoint('./vgg_16.ckpt', {ckpt_list[name-1][0]: variables_to_restore[name]})
-        tf.contrib.framework.init_from_checkpoint('./vgg_16.ckpt', {ckpt_list[name][0]: variables_to_restore[name-1]})
-
-    # Initializing the variables
-    saver = tf.train.Saver()
-    init = tf.global_variables_initializer()
-    sess.run(init)
-
-
-    # Start to train model
-    for epoch in range(epochs):
-        epoch_loss = np.zeros((train_num,1),dtype = float)
-        tStart_epoch = time.time()
-        batch_loss = 0.0
-        random_idx = np.random.permutation(num_data)
-        for num_iters in tqdm(range(train_num),ascii=True,desc='Epoch '+str(epoch+1)+' : Loss:'+str(batch_loss)):
-            # train_img, train_label = next(train_gen)
-            curr_idx = random_idx[num_iters*BATCH_SIZE : (num_iters+1)*BATCH_SIZE]
-            x_train, d_train, o_train, b_train = prepare_data(label, curr_idx, BATCH_SIZE, dim_stats)
-            _,batch_loss = sess.run([optimizer,loss], feed_dict={inputs: x_train, d_label: d_train, o_label: o_train, c_label: b_train})
-
-            epoch_loss[num_iters] = batch_loss 
-            print(batch_loss)
-
-        # save model
-        if (epoch+1) % 5 == 0:
-            saver.save(sess,save_path+"model", global_step = epoch+1)
-
-        # Print some information
-        print ("Epoch:", epoch+1, " done. Loss:", np.mean(epoch_loss))
-        tStop_epoch = time.time()
-        print ("Epoch Time Cost:", round(tStop_epoch - tStart_epoch,2), "s")
-        sys.stdout.flush()
-
 def test(model, image_dir, box2d_loc, box3d_loc):
     dim_stats = read_stats("label_stats.txt")
     ### buile graph
-    # dimension, orientation, confidence, loss, optimizer, loss_d, loss_o, loss_c = build_model()
     dimension, orientation, _, confidence = VGG_3D(inputs, training=False)
 
     ### GPU config 
@@ -216,7 +65,8 @@ def test(model, image_dir, box2d_loc, box3d_loc):
     if os.path.isdir(box3d_loc) == False:
         os.mkdir(box3d_loc)
 
-    # Load image & run testing
+    # Load image & run testing 
+    # USE 7000 to 7480 to eval
     all_image = sorted(os.listdir(image_dir))[7000:]
 
     for f in all_image:
@@ -290,12 +140,6 @@ if __name__ == "__main__":
         raise IOError(('Image not found.'.format(args.image)))
     if args.box2d is None :
         raise IOError(('2D bounding box not found.'.format(args.box2d)))
-
-    if args.mode == 'train':
-        if args.label is None:
-            raise IOError(('Label not found.'.format(args.label)))
-
-        train(args.image, args.box2d, args.label)
     else:
         if args.model is None:
             raise IOError(('Model not found.'.format(args.model)))

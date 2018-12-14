@@ -1,1 +1,1 @@
-python3 predict.py --mode test --gpu 0 --image /home/liu/Desktop/KITTI/data_object_image_2/training/image_2/ --box2d /home/liu/Desktop/KITTI/training/label_2/ --model model/augment-30 --output /home/liu/Desktop/KITTI/training/label_3/
+python predict.py --mode test --gpu 0 --image /home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/image_2/ --box2d /home/vincegong/Documents/KITTI3Ddata/3Ddetection/training/label_2/ --model model_final/augment-50 --output /home/vincegong/Documents/Course/EECS545/Project/3D-DeepBox-for-EECS545/output_final/
